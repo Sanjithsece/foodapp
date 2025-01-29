@@ -10,11 +10,11 @@ app.use(express.json());
 app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"] }));
 
 // mongo db
-
-  mongoose
+mongoose
   .connect("mongodb+srv://sanjithcce:sanjith27399@cluster0.fsgus.mongodb.net/")
   .then(() => console.log("Connected to MongoDB..."))
   .catch((err) => console.error("Database connection error:", err));
+
 // User Schema
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -157,17 +157,3 @@ const PORT = process.env.PORT ;
 app.listen(3000, () => {
   console.log(`Server is running on http://localhost:3000`);
 });
-
-// app.post("/api/food", async (req, res) => {
-//   const { name, rating, price } = req.body;
-
-//   if (!name || !price) return res.status(400).json({ message: "Name and Price are required" });
-
-//   try {
-//     const newFoodItem = new FoodItem({ name, rating, price });
-//     await newFoodItem.save();
-//     res.status(201).json(newFoodItem);
-//   } catch (error) {
-//     res.status(500).json({ message: "Failed to add food item", error: error.message });
-//   }
-// });
