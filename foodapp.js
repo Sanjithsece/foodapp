@@ -157,3 +157,17 @@ const PORT = process.env.PORT ;
 app.listen(3000, () => {
   console.log(`Server is running on http://localhost:3000`);
 });
+
+// app.post("/api/food", async (req, res) => {
+//   const { name, rating, price } = req.body;
+
+//   if (!name || !price) return res.status(400).json({ message: "Name and Price are required" });
+
+//   try {
+//     const newFoodItem = new FoodItem({ name, rating, price });
+//     await newFoodItem.save();
+//     res.status(201).json(newFoodItem);
+//   } catch (error) {
+//     res.status(500).json({ message: "Failed to add food item", error: error.message });
+//   }
+// });
