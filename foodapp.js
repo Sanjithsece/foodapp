@@ -7,15 +7,15 @@ const jwt = require("jsonwebtoken");
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: "*", methods: ["GET", "POST", "PUT", "DELETE"], allowedHeaders: ["Content-Type", "Authorization"] }));
 
-// Connect to MongoDB
-mongoose
+// mongo db
+
+  mongoose
   .connect("mongodb+srv://sanjithcce:sanjith27399@cluster0.fsgus.mongodb.net/")
   .then(() => console.log("Connected to MongoDB..."))
   .catch((err) => console.error("Database connection error:", err));
-
-// User Schema and Model
+// User Schema
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
@@ -74,39 +74,21 @@ app.post("/api/login", async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
-    if (!user) {
-      console.log(" User not found for email:", email);
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
+    if (!user) return res.status(400).json({ message: "Invalid email or password" });
 
-    console.log(" User found:", user);
-
-    // Compare hashed password
     const validPassword = await bcrypt.compare(password, user.password);
-    console.log(" Password Match:", validPassword);
+    if (!validPassword) return res.status(400).json({ message: "Invalid email or password" });
 
-    if (!validPassword) {
-      console.log(" Incorrect password for:", email);
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
+    const token = jwt.sign({ id: user._id, username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    const token = jwt.sign(
-      { id: user._id, username: user.username, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    console.log(" Login successful for:", email);
     res.status(200).json({ message: "Login successful", token });
   } catch (err) {
-    console.error("Login error:", err.message);
     res.status(500).json({ message: "Login failed", error: err.message });
   }
 });
 
-// Food Item Schema and Model
+// Food Item Schema
 const foodItemSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   rating: { type: String },
   price: { type: Number, required: true },
@@ -114,10 +96,9 @@ const foodItemSchema = new mongoose.Schema({
 
 const FoodItem = mongoose.model("FoodItem", foodItemSchema);
 
-// Order Schema and Model
+// Order Schema
 const orderSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
-  items: [{ id: String, name: String, quantity: Number }],
+  items: [{ name: String, quantity: Number }],
   totalPrice: { type: Number, required: true },
   customerName: { type: String, required: true },
   status: { type: String, default: "Pending" },
@@ -134,16 +115,15 @@ app.get("/api/food", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch food items", error: error.message });
   }
 });
-// Create a new food item
-app.post("/api/food", async (req, res) => {
-  const { id, name, rating, price } = req.body;
 
-  if (!id || !name || !price) {
-    return res.status(400).json({ message: "ID, Name, and Price are required" });
-  }
+// Add new food item
+app.post("/api/food", async (req, res) => {
+  const { name, rating, price } = req.body;
+
+  if (!name || !price) return res.status(400).json({ message: "Name and Price are required" });
 
   try {
-    const newFoodItem = new FoodItem({ id, name, rating, price });
+    const newFoodItem = new FoodItem({ name, rating, price });
     await newFoodItem.save();
     res.status(201).json(newFoodItem);
   } catch (error) {
@@ -151,50 +131,29 @@ app.post("/api/food", async (req, res) => {
   }
 });
 
-
-// Place a new order
-// Place a new order
+// Place an order
 app.post("/api/orders", async (req, res) => {
   const { items, customerName } = req.body;
-
-  // Validation for the request body
-  if (!Array.isArray(items) || !items.length) {
-    return res.status(400).json({ message: "Items must be a non-empty array" });
-  }
-
-  if (!customerName) {
-    return res.status(400).json({ message: "Customer name is required" });
-  }
+  if (!items.length || !customerName) return res.status(400).json({ message: "Invalid order details" });
 
   try {
     let totalPrice = 0;
-
-    // Loop through the items to get the details from the FoodItem collection
     for (const item of items) {
-      const foodItem = await FoodItem.findOne({ id: item.id });
-      if (!foodItem) {
-        return res.status(404).json({ message: `Food item ${item.name} not found.` });
-      }
-      totalPrice += foodItem.price * item.quantity;
+      const food = await FoodItem.findOne({ name: item.name });
+      if (!food) return res.status(404).json({ message: `Food item ${item.name} not found.` });
+      totalPrice += food.price * item.quantity;
     }
 
-    // Create the new order with the total price
-    const newOrder = new Order({
-      id: new mongoose.Types.ObjectId().toString(),
-      items,
-      totalPrice,
-      customerName,
-    });
-
-    const savedOrder = await newOrder.save();
-    res.status(201).json(savedOrder);  // Return the saved order details
+    const newOrder = new Order({ items, totalPrice, customerName });
+    await newOrder.save();
+    res.status(201).json(newOrder);
   } catch (error) {
     res.status(500).json({ message: "Failed to place order", error: error.message });
   }
 });
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT ;
 app.listen(3000, () => {
-  console.log(`Server is running on http://localhost:${3000}`);
+  console.log(`Server is running on http://localhost:3000`);
 });
