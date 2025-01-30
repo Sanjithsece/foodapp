@@ -143,40 +143,23 @@ app.post("/api/food", async (req, res) => {
 // Place an order
 app.post("/api/orders", authenticate, async (req, res) => {
   const { items, customerName } = req.body;
-
-  // Ensure items is an array and has at least one item, and customerName is provided
-  if (!Array.isArray(items) || items.length === 0 || !customerName) {
-    return res.status(400).json({ message: "Invalid order details" });
-  }
+  if (!items.length || !customerName) return res.status(400).json({ message: "Invalid order details" });
 
   try {
     let totalPrice = 0;
-
-    // Loop through each item in the order
     for (const item of items) {
       const food = await FoodItem.findOne({ name: item.name });
-
-      // If food item is not found, return a 404 error
-      if (!food) {
-        return res.status(404).json({ message: `Food item ${item.name} not found.` });
-      }
-
-      // Add the price of the item (price * quantity) to the total
+      if (!food) return res.status(404).json({ message: `Food item ${item.name} not found.` });
       totalPrice += food.price * item.quantity;
     }
 
-    // Create a new order object and save it to the database
     const newOrder = new Order({ items, totalPrice, customerName });
     await newOrder.save();
-
-    // Respond with the created order
     res.status(201).json(newOrder);
   } catch (error) {
-    // Handle any errors that occur during the process
-    res.status(500).json({ message: "Failed to place order....", error: error.message });
+    res.status(500).json({ message: "Failed to place order", error: error.message });
   }
 });
-
 
 // Start server
 const PORT = process.env.PORT ;
