@@ -24,12 +24,12 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// Middleware to verify JWT
+
 const authenticate = (req, res, next) => {
   const token = req.header("Authorization");
   if (!token) return res.status(401).json({ message: "Access Denied. No token provided." });
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, verified) => {
+  jwt.verify(token.split(" ")[1], process.env.JWT_SECRET, (err, verified) => {
     if (err) return res.status(400).json({ message: "Invalid token." });
     req.user = verified;
     next();
@@ -81,7 +81,7 @@ app.post("/api/login", async (req, res) => {
 
     const token = jwt.sign({ id: user._id, username: user.username, email: user.email }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-    res.status(200).json({ message: "Login successful", token });
+    res.status(200).json({ message: "Login successful", token, username: user.username });
   } catch (err) {
     res.status(500).json({ message: "Login failed", error: err.message });
   }
@@ -89,10 +89,12 @@ app.post("/api/login", async (req, res) => {
 
 // Food Item Schema
 const foodItemSchema = new mongoose.Schema({
+
   name: { type: String, required: true },
   rating: { type: String },
   price: { type: Number, required: true },
 });
+
 
 const FoodItem = mongoose.model("FoodItem", foodItemSchema);
 
@@ -123,6 +125,12 @@ app.post("/api/food", async (req, res) => {
   if (!name || !price) return res.status(400).json({ message: "Name and Price are required" });
 
   try {
+    // Check if the food item already exists
+    const existingFood = await FoodItem.findOne({ name });
+    if (existingFood) {
+      return res.status(400).json({ message: "Food item already exists" });
+    }
+
     const newFoodItem = new FoodItem({ name, rating, price });
     await newFoodItem.save();
     res.status(201).json(newFoodItem);
@@ -131,26 +139,44 @@ app.post("/api/food", async (req, res) => {
   }
 });
 
+
 // Place an order
-app.post("/api/orders", async (req, res) => {
+app.post("/api/orders", authenticate, async (req, res) => {
   const { items, customerName } = req.body;
-  if (!items.length || !customerName) return res.status(400).json({ message: "Invalid order details" });
+
+  // Ensure items is an array and has at least one item, and customerName is provided
+  if (!Array.isArray(items) || items.length === 0 || !customerName) {
+    return res.status(400).json({ message: "Invalid order details" });
+  }
 
   try {
     let totalPrice = 0;
+
+    // Loop through each item in the order
     for (const item of items) {
       const food = await FoodItem.findOne({ name: item.name });
-      if (!food) return res.status(404).json({ message: `Food item ${item.name} not found.` });
+
+      // If food item is not found, return a 404 error
+      if (!food) {
+        return res.status(404).json({ message: `Food item ${item.name} not found.` });
+      }
+
+      // Add the price of the item (price * quantity) to the total
       totalPrice += food.price * item.quantity;
     }
 
+    // Create a new order object and save it to the database
     const newOrder = new Order({ items, totalPrice, customerName });
     await newOrder.save();
+
+    // Respond with the created order
     res.status(201).json(newOrder);
   } catch (error) {
-    res.status(500).json({ message: "Failed to place order", error: error.message });
+    // Handle any errors that occur during the process
+    res.status(500).json({ message: "Failed to place order....", error: error.message });
   }
 });
+
 
 // Start server
 const PORT = process.env.PORT ;
