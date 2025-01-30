@@ -84,19 +84,16 @@ app.post("/api/login", async (req, res) => {
     res.status(200).json({ message: "Login successful", token, username: user.username });
   } catch (err) {
     console.error("Login failed:", err);
-    res.status(500).json({ message: "Login failed....", error: err.message });
+    res.status(500).json({ message: "Login failed!!!...", error: err.message });
   }
 });
 
-
 // Food Item Schema
 const foodItemSchema = new mongoose.Schema({
-
   name: { type: String, required: true },
   rating: { type: String },
   price: { type: Number, required: true },
 });
-
 
 const FoodItem = mongoose.model("FoodItem", foodItemSchema);
 
@@ -113,9 +110,11 @@ const Order = mongoose.model("Order", orderSchema);
 // Get all food items
 app.get("/api/food", async (req, res) => {
   try {
+    console.log("Fetching all food items...");
     const foodItems = await FoodItem.find();
     res.status(200).json(foodItems);
   } catch (error) {
+    console.error("Failed to fetch food items:", error);
     res.status(500).json({ message: "Failed to fetch food items", error: error.message });
   }
 });
@@ -127,6 +126,7 @@ app.post("/api/food", async (req, res) => {
   if (!name || !price) return res.status(400).json({ message: "Name and Price are required" });
 
   try {
+    console.log(`Attempting to add new food item: ${name}`);
     // Check if the food item already exists
     const existingFood = await FoodItem.findOne({ name });
     if (existingFood) {
@@ -137,10 +137,10 @@ app.post("/api/food", async (req, res) => {
     await newFoodItem.save();
     res.status(201).json(newFoodItem);
   } catch (error) {
+    console.error("Failed to add food item:", error);
     res.status(500).json({ message: "Failed to add food item", error: error.message });
   }
 });
-
 
 // Place an order
 app.post("/api/orders", authenticate, async (req, res) => {
@@ -148,6 +148,7 @@ app.post("/api/orders", authenticate, async (req, res) => {
   if (!items.length || !customerName) return res.status(400).json({ message: "Invalid order details" });
 
   try {
+    console.log(`Placing order for customer: ${customerName}`);
     let totalPrice = 0;
     for (const item of items) {
       const food = await FoodItem.findOne({ name: item.name });
@@ -159,6 +160,7 @@ app.post("/api/orders", authenticate, async (req, res) => {
     await newOrder.save();
     res.status(201).json(newOrder);
   } catch (error) {
+    console.error("Failed to place order:", error);
     res.status(500).json({ message: "Failed to place order", error: error.message });
   }
 });
