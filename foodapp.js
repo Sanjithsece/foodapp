@@ -24,7 +24,6 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-
 const authenticate = (req, res, next) => {
   const token = req.header("Authorization");
   if (!token) return res.status(401).json({ message: "Access Denied. No token provided." });
@@ -73,6 +72,7 @@ app.post("/api/login", async (req, res) => {
   }
 
   try {
+    console.log(`Attempting to find user with email: ${email}`);
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid email or password" });
 
@@ -83,9 +83,11 @@ app.post("/api/login", async (req, res) => {
 
     res.status(200).json({ message: "Login successful", token, username: user.username });
   } catch (err) {
-    res.status(500).json({ message: "Login failed", error: err.message });
+    console.error("Login failed:", err);
+    res.status(500).json({ message: "Login failed....", error: err.message });
   }
 });
+
 
 // Food Item Schema
 const foodItemSchema = new mongoose.Schema({
@@ -166,3 +168,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+
